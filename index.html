@@ -9,7 +9,7 @@
 </head>
 
 <body>
-<canvas id="topoCanvas"></canvas>
+<canvas id="topoCanvas" width="640px" height="400px"></canvas>
 
 <!-- JavaScript at the bottom for fast page loading: http://developer.yahoo.com/performance/rules.html#js_bottom -->
 <!-- Grab Google CDN's jQuery, with a protocol relative URL; fall back to local if offline -->
@@ -25,11 +25,23 @@
 
 <script type="text/javascript">
 $(document).ready(function() {
-	require(["src/g2.js"], function(g2){
-		var panel;
-		panel = new g2.G2Panel(document.getElementById("topoCanvas"));
-		panel.hello();
-	})
+	var panel;
+	panel = new G2.GraphPanel(document.getElementById("topoCanvas"));
+	
+	var data;
+	data = {
+		nodes:[
+			{id:0, name:"NODE-00", x:200, y:100},
+			{id:1, name:"NODE-01", x:250, y:150},
+			{id:2, name:"NODE-02", x:200, y:150}
+		],
+		edges:[
+			{id:0, name:"EDGE-00", snode:0, dnode:1},
+			{id:1, name:"EDGE-01", snode:1, dnode:2}
+		]
+	}
+	
+	panel.set(data)
  });</script>
 <!-- end scripts -->
 </body>
