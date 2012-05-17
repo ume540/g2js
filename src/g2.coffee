@@ -1,16 +1,30 @@
 # g2.coffee -> g2.js
+#
+# REQUIRED:
+#   Easel.js
+#
+# TODO ノード、エッジのデータ変更を反映させる.
+# 
+#
 
 ###
 G2.GraphPanel class
 -------------------------------------------------------------------------
-主にインタラクティブなグラフデータの描画を行うパネル.
+グラフデータの描画を行うパネル。
 
-パネルは以下の3つのレイヤから構成される。
+G2パネルは以下のレイヤから構成される。
 
 (1) background layer
+      背景を描画するレイヤー
+      
 (2) visualization layer
-(3) floating tools layer
-
+      ノードとエッジの情報を描画するレイヤー
+      
+(3) selector layer
+      選択時のラバーバンドを描画するレイヤー
+      
+(4) floating tools layer
+      パネル内にフローティングで表示するUIコントロールを描画するレイヤー
 
 グラフデータは以下のJSONデータとして与える.
 -------------------------------------------
@@ -79,8 +93,8 @@ class GraphPanel
   _initLayer:->
     # レイヤーの初期化.
     @bgLayer = new Background(@)
-    @visLayer = new SelectorLayer(@)
-    @selLayer = new Container()
+    @visLayer = new Container(@)
+    @selLayer = new SelectorLayer()
     @toolLayer = new Container()
     @stage.addChild(@bgLayer, @visLayer, @selLayer, @toolLayer)
     
@@ -89,19 +103,29 @@ class GraphPanel
     for i, n of @nodes
       if not n.select and rect.hitTest(n.x, n.y)
         n.toggleSelect()
-    null
 
   set:(gData)->
     # 表示するグラフデータの設定.
     # グラフデータフォーマットは、このクラスのヘッダを参照.
     if gData.nodes
       for d in gData.nodes
-        @nodes[d.id] = @visLayer.addChild(new Node(@, d))    
+        node = @nodes[d.id]
+        if not node
+          @nodes[d.id] = @visLayer.addChild(new Node(@, d))
+        else
+          for k, v of d
+            node[k] = v
+          node.redrawNode()
     if gData.edges
       for d in gData.edges
-        @edges[d.id] = @visLayer.addChildAt(new Edge(@, d), 0)
+        edge = @edges[d.id]
+        if not edge
+          @edges[d.id] = @visLayer.addChildAt(new Edge(@, d), 0)
+        else
+          for k, v of d
+            edge[k] = v
+          edge.redrawEdge()
     @stage.update()
-    null
     
   showUiControlBox:->
     # Floating Toolboxの作成、表示.
@@ -111,7 +135,6 @@ class GraphPanel
         _createUiControlBox()
       # add UiControlBox to stage.
       @toolLayer.addChild(@uiControlBox)
-    null
     
   _createUiControlBox:->
     # Floating Toolboxの作成
@@ -119,7 +142,6 @@ class GraphPanel
     s = new Shape()
     s.graphics.drawRect(0, 0, 100, 50)
     @uiControlBox.addChild(s)
-    null
 
 ###
 G2.BackgroundLayer class
@@ -314,6 +336,48 @@ class Edge extends Container
       console.log "node #{@props.dnode} was not found." if not dnode
       return null
 
+###
+
+###
+class Comm
+  constructor:(url)->
+    if url
+      @open(url)
+  
+  open:(url)->
+    if "WebSocket" in window
+      @ws = new WebSocket(url)
+    else if "MozWebSocket" in window
+      @ws = new MozWebSocket(url)
+    if @ws
+      @url = url
+      
+      @ws.onmessage = (e)-> @_onMessage(e)
+      @ws.onopen = (e)-> @_onOpen(e)
+      @ws.onclose = (e)-> @_onClose(e)
+      @ws.onerror = (e)-> @_onError(e)
+
+  close:->
+    @ws.close()
+    
+  send:(msg)->
+    @ws.send(msg)
+
+  _onMessage:(e)->
+    # メッセージを受信.
+    console.log "ws receive message #{e.data}"
+    msg = eval(e.data)
+    
+  _onOpen:(e)->
+    console.log "ws has been opened."
+
+  _onClose:(e)->
+    console.log "ws has been closed."  
+  
+  _onError:(e)->
+    console.log "ws error has occured."  
+    @ws.close()
+    
 ###
 exports to global(window) namespace.
 -------------------------------------------------------------------------
